@@ -1,12 +1,11 @@
 # SI 201 HW6 (APIs, JSON, and Caching)
-# Your name:
-# Your student id:
-# Your email:
-# Who or what you worked with on this homework (including generative AI like ChatGPT):
+# Your name: Coby Kalimian
+# Your student id: 4950 5044
+# Your email: cobykali@umich.edu
+# Who or what you worked with on this homework (including generative AI like ChatGPT): Nathaniel Mitelman, ChatGPT
 # If you worked with generative AI also add a statement for how you used it.
-# e.g.:
-# Asked ChatGPT for help debugging and understanding the JSON structure
 #
+# I used ChatGPT to help debug errors and better understand how to implement functions involving APIs, JSON handling, and caching.
 # Did your use of GenAI on this assignment align with your goals and guidelines in your Gen AI contract? If not, why?
 #
 # --- ARGUMENTS & EXPECTED RETURN VALUES PROVIDED --- #
@@ -215,25 +214,46 @@ def get_groups_above_cutoff(cutoff, cache_file):
 
 # Extra Credit
 def recommend_breeds_in_same_group(breed_name, cache_file):
-    """
-    Recommends other breeds in the cache that share the same Dog API group id as
-    the given breed. Match the target breed by data["attributes"]["name"] (case-insensitive).
-    Compare groups using data["relationships"]["group"]["data"]["id"] (UUID).
-    Exclude the target breed in the result list.
-    Return breed names sorted alphabetically.
+    cache = load_json(cache_file)
 
-    ARGUMENTS:
-        breed_name: the breed name to look up in the cache
-        cache_file: path to the JSON cache file
+    if len(cache) == 0:
+        return "No breed data found in cache."
 
-    RETURNS:
-        EITHER a sorted list of other breed names in the same group
-        OR one of these strings:
-            "No breed data found in cache."  (empty cache)
-            "'{breed_name}' is not in the cache."  (name not found)
-            "No group information available for '{breed_name}'."  (no group id)
-            "No recommendations found based on '{breed_name}'."  (no other breeds in that group)
-    """
+    target_data = None
+    for url in cache:
+        entry = cache[url]
+        try:
+            name = entry["data"]["attributes"]["name"]
+        except (KeyError, TypeError):
+            continue
+        if name.lower() == breed_name.lower():
+            target_data = entry
+            break
+
+    if target_data is None:
+        return f"'{breed_name}' is not in the cache."
+
+    try:
+        target_group = target_data["data"]["relationships"]["group"]["data"]["id"]
+    except (KeyError, TypeError):
+        return f"No group information available for '{breed_name}'."
+
+    recommendations = []
+    for url in cache:
+        entry = cache[url]
+        try:
+            name = entry["data"]["attributes"]["name"]
+            group_id = entry["data"]["relationships"]["group"]["data"]["id"]
+        except (KeyError, TypeError):
+            continue
+        if group_id == target_group and name.lower() != breed_name.lower():
+            recommendations.append(name)
+
+    if len(recommendations) == 0:
+        return f"No recommendations found based on '{breed_name}'."
+
+    recommendations.sort()
+    return recommendations
 
 
 class TestHomeworkDogAPI(unittest.TestCase):
@@ -458,7 +478,6 @@ class TestHomeworkDogAPI(unittest.TestCase):
     # -------------------------
     # extra credit - uncomment tests below to evaluate extra credit function
     # -------------------------
-    """
     def test_recommend_breeds_in_same_group_empty_cache(self):
         create_cache({}, self.test_cache_file)
         self.assertEqual(
@@ -563,7 +582,6 @@ class TestHomeworkDogAPI(unittest.TestCase):
             recommend_breeds_in_same_group("breed a", self.test_cache_file),
             ["Breed B", "Breed Z"],
         )
-    """
 
 
 if __name__ == "__main__":
